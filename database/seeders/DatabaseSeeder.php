@@ -24,16 +24,5 @@ class DatabaseSeeder extends Seeder
             TransactionsTableSeeder::class,
             UserPortfolioTableSeeder::class,
         ]);
-
-        User::firstOrCreate(
-            ['email' => 'test@example.com'],
-            [
-                'name' => 'Test User',
-                'password' => Hash::make('password'),
-                'email_verified_at' => now(),
-                'role_id' => 3,
-                'is_active' => true,
-            ]
-        );
     }
 }
