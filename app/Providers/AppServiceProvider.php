@@ -11,7 +11,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(\App\Services\GaleriGold\Contracts\PriceFetcherInterface::class, function () {
+            return new \App\Services\GaleriGold\GaleriGoldFetcher('https://galeri24.co.id/harga-emas');
+        });
+
+        $this->app->singleton(\App\Services\GaleriGold\Contracts\PriceParserInterface::class, \App\Services\GaleriGold\GaleriGoldParser::class);
+        $this->app->singleton(\App\Services\GaleriGold\Contracts\PricePersisterInterface::class, \App\Services\GaleriGold\GoldPricePersister::class);
     }
 
     /**
