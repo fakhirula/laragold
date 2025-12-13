@@ -4,15 +4,11 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use App\Http\Controllers\PriceController;
-use App\Http\Controllers\GoldPriceController;
 
-Route::get('/', function ($goldPriceService) {
-    $days = request()->input('days', 7); // Default 7 days
-    $historicalPrices = $goldPriceService->getFormattedHistoricalPrices($days);
-    
+Route::get('/', function () {
     return Inertia::render('Home', [
-        'historicalPrices' => $historicalPrices,
-        'selectedDays' => (int) $days,
+        'historicalPrices' => [],
+        'selectedDays' => 0,
     ]);
 })->name('home');
 
