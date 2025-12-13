@@ -4,9 +4,8 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use App\Http\Controllers\PriceController;
-use App\Services\GoldPriceService;
 
-Route::get('/', function (GoldPriceService $goldPriceService) {
+Route::get('/', function ($goldPriceService) {
     $days = request()->input('days', 7); // Default 7 days
     $historicalPrices = $goldPriceService->getFormattedHistoricalPrices($days);
     

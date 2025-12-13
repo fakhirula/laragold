@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\GoldPriceService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -10,7 +9,7 @@ class PriceController extends Controller
 {
     protected $goldPriceService;
 
-    public function __construct(GoldPriceService $goldPriceService)
+    public function __construct($goldPriceService)
     {
         $this->goldPriceService = $goldPriceService;
     }
