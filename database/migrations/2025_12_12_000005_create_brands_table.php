@@ -7,15 +7,15 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('gold_brands', function (Blueprint $table) {
+        Schema::create('brands', function (Blueprint $table) {
             $table->tinyIncrements('id');
-            $table->string('name', 100)->unique()->comment('Antam, UBS, Pegadaian');
+            $table->string('name', 100)->unique();
             $table->enum('metal_type', ['Gold', 'Silver', 'Platinum'])->default('Gold');
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('gold_brands');
+        Schema::dropIfExists('brands');
     }
 };

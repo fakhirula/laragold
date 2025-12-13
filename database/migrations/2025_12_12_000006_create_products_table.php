@@ -11,13 +11,13 @@ return new class extends Migration {
             $table->bigIncrements('id');
             $table->tinyInteger('brand_id', unsigned: true);
             $table->string('name');
-            $table->decimal('purity_pct', 5, 2)->default(99.99)->comment('Kemurnian dalam persen');
-            $table->decimal('weight_g', 10, 3)->default(0.000)->comment('Berat nominal emas (jika batangan/fisik)');
-            $table->boolean('is_physical')->default(false)->comment('Dapat diwujudkan fisik (klaim)');
+            $table->decimal('purity_pct', 5, 2)->default(99.99);
+            $table->decimal('weight_g', 10, 3)->default(0.000);
+            $table->boolean('is_physical')->default(false);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
 
-            $table->foreign('brand_id')->references('id')->on('gold_brands')->restrictOnDelete();
+            $table->foreign('brand_id')->references('id')->on('brands')->restrictOnDelete();
         });
     }
 

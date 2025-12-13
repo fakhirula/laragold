@@ -9,7 +9,7 @@ return new class extends Migration {
     {
         Schema::create('roles', function (Blueprint $table) {
             $table->tinyInteger('id', unsigned: true)->primary();
-            $table->string('name', 50)->unique()->comment('Administrator, Supervisor, Client');
+            $table->string('name', 50)->unique();
         });
     }
 

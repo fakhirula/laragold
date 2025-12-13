@@ -10,15 +10,15 @@ return new class extends Migration {
         Schema::create('transactions', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->unsignedBigInteger('user_id');
-            $table->enum('type', ['buy', 'sell'])->comment('User membeli atau User menjual');
+            $table->enum('type', ['buy', 'sell']);
             $table->enum('status', ['pending', 'completed', 'cancelled', 'failed']);
-            $table->decimal('total_amount_rp', 18, 2)->comment('Total Rupiah yang terlibat (Min. 10000)');
-            $table->unsignedBigInteger('partner_id')->nullable()->comment('Mitra yang melayani pencairan (NULL jika hanya transaksi digital)');
+            $table->decimal('total_amount_rp', 18, 2);
+            $table->unsignedBigInteger('branch_id')->nullable();
             $table->timestamp('transaction_date')->useCurrent();
             $table->timestamps();
 
             $table->foreign('user_id')->references('id')->on('users')->restrictOnDelete();
-            $table->foreign('partner_id')->references('id')->on('service_partners')->nullOnDelete();
+            $table->foreign('branch_id')->references('id')->on('branches')->nullOnDelete();
         });
     }
 

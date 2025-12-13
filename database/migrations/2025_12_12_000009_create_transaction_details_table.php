@@ -11,9 +11,9 @@ return new class extends Migration {
             $table->bigIncrements('id');
             $table->unsignedBigInteger('transaction_id');
             $table->unsignedBigInteger('product_id');
-            $table->decimal('weight_g', 18, 6)->comment('Berat Gram yang dibeli/dijual');
-            $table->decimal('price_per_gram_at_time', 18, 6)->comment('Harga per gram saat transaksi terjadi (untuk audit)');
-            $table->decimal('subtotal_rp', 18, 2)->comment('Nilai Rupiah untuk item ini');
+            $table->decimal('weight_g', 18, 6);
+            $table->decimal('price_per_gram_at_time', 18, 6);
+            $table->decimal('subtotal_rp', 18, 2);
             $table->timestamps();
 
             $table->foreign('transaction_id')->references('id')->on('transactions')->cascadeOnDelete();

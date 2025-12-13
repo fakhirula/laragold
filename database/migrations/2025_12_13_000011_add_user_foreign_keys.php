@@ -8,10 +8,17 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->tinyInteger('role_id', unsigned: true)->after('id');
-            $table->boolean('is_active')->default(true)->after('password');
+            // Add FK to roles
+            $table->foreign('role_id')
+                ->references('id')
+                ->on('roles')
+                ->nullOnDelete();
 
-            $table->foreign('role_id')->references('id')->on('roles')->restrictOnDelete();
+            // Add FK to branches (optional assignment)
+            $table->foreign('branch_id')
+                ->references('id')
+                ->on('branches')
+                ->nullOnDelete();
         });
     }
 
@@ -19,7 +26,7 @@ return new class extends Migration {
     {
         Schema::table('users', function (Blueprint $table) {
             $table->dropForeign(['role_id']);
-            $table->dropColumn(['role_id', 'is_active']);
+            $table->dropForeign(['branch_id']);
         });
     }
 };

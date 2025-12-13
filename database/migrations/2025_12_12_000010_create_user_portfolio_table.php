@@ -11,7 +11,7 @@ return new class extends Migration {
             $table->bigIncrements('id');
             $table->unsignedBigInteger('user_id');
             $table->unsignedBigInteger('product_id');
-            $table->decimal('balance_weight_g', 18, 6)->default(0.000000)->comment('Total berat (Gram) yang dimiliki user');
+            $table->decimal('balance_weight_g', 18, 6)->default(0.000000);
             $table->timestamp('last_updated')->useCurrent()->useCurrentOnUpdate();
 
             $table->unique(['user_id', 'product_id'], 'uk_user_product');
