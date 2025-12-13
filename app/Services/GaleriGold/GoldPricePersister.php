@@ -16,60 +16,80 @@ class GoldPricePersister implements PricePersisterInterface
      */
     public function persist(array $snapshots): void
     {
-        foreach ($snapshots as $snapshot) {
-            if (!($snapshot instanceof PriceSnapshot)) {
-                continue;
+        // Group snapshots by brand
+        $byBrand = [];
+        foreach ($snapshots as $s) {
+            if ($s instanceof PriceSnapshot) {
+                $byBrand[$s->brand][] = $s;
             }
+        }
 
+        foreach ($byBrand as $brandName => $items) {
             try {
+                // Prefer exact 1g snapshot
+                $exact = null;
+                foreach ($items as $it) {
+                    if (abs($it->weight - 1.0) < 0.0001) {
+                        $exact = $it;
+                        break;
+                    }
+                }
+
+                // If not found, pick the first available and compute 1g using per-gram
+                $source = $exact ?? $items[0];
+
                 $brand = Brand::firstOrCreate(
-                    ['name' => $snapshot->brand],
+                    ['name' => $brandName],
                     ['metal_type' => 'Gold']
                 );
 
+                // Ensure product is 1g only
                 $product = Product::firstOrCreate(
                     [
                         'brand_id' => $brand->id,
-                        'weight_g' => $snapshot->weight,
+                        'weight_g' => 1.0,
                     ],
                     [
-                        'name' => sprintf('%s - %.1f gram', $brand->name, $snapshot->weight),
+                        'name' => sprintf('%s - 1.0 gram', $brand->name),
                         'purity_pct' => 99.99,
                         'is_physical' => true,
                         'is_active' => true,
                     ]
                 );
 
-                // Upsert sell
+                // Compute per-gram from source snapshot
+                $sellPerGram = $source->sellPrice / $source->weight;
+                $buyPerGram = $source->buyPrice / $source->weight;
+
+                // Persist prices for 1g product
                 Price::updateOrCreate(
                     [
                         'product_id' => $product->id,
                         'price_type' => 'sell',
-                        'recorded_at' => $snapshot->recordedAt,
+                        'recorded_at' => $source->recordedAt,
                     ],
                     [
-                        'price_per_gram' => $snapshot->sellPrice / $snapshot->weight,
+                        'price_per_gram' => $sellPerGram,
                     ]
                 );
 
-                // Upsert buy
                 Price::updateOrCreate(
                     [
                         'product_id' => $product->id,
                         'price_type' => 'buy',
-                        'recorded_at' => $snapshot->recordedAt,
+                        'recorded_at' => $source->recordedAt,
                     ],
                     [
-                        'price_per_gram' => $snapshot->buyPrice / $snapshot->weight,
+                        'price_per_gram' => $buyPerGram,
                     ]
                 );
 
                 Log::info(sprintf(
-                    'Saved price: %s - %.1fg (sell: Rp%.0f, buy: Rp%.0f)',
+                    'Saved 1g price for %s (source %.2fg): sell Rp%.0f/gram, buy Rp%.0f/gram',
                     $brand->name,
-                    $snapshot->weight,
-                    $snapshot->sellPrice,
-                    $snapshot->buyPrice
+                    $source->weight,
+                    $sellPerGram,
+                    $buyPerGram
                 ));
             } catch (\Throwable $e) {
                 Log::error('GoldPricePersister error: '.$e->getMessage());

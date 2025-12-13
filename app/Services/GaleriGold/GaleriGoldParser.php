@@ -54,7 +54,7 @@ class GaleriGoldParser implements PriceParserInterface
                             weight: $weight,
                             sellPrice: $sellPrice,
                             buyPrice: $buyPrice,
-                            recordedAt: Carbon::now()->startOfDay()
+                            recordedAt: Carbon::now('Asia/Jakarta')
                         );
                     }
                 });
