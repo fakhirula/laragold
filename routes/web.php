@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use App\Http\Controllers\PriceController;
+use App\Http\Controllers\GoldPriceController;
 
 Route::get('/', function ($goldPriceService) {
     $days = request()->input('days', 7); // Default 7 days
@@ -38,7 +39,5 @@ Route::get('/profiles/me', function () {
 })->name('profiles.me');
 
 Route::get('/prices', [PriceController::class, 'index'])->name('prices');
-Route::get('/api/prices/current', [PriceController::class, 'current'])->name('api.prices.current');
-Route::get('/api/prices/history', [PriceController::class, 'history'])->name('api.prices.history');
 
 require __DIR__.'/settings.php';

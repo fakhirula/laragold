@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Brand;
 use App\Models\Product;
+use App\Models\Price;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 /**
  * Contoh Controller untuk menggunakan data emas yang sudah di-scrape
@@ -17,23 +20,33 @@ class GoldPriceController extends Controller
      */
     public function getAllPrices()
     {
-        $brands = Brand::with(['products.latestSellPrice', 'products.latestBuyPrice'])
-            ->get()
-            ->map(function ($brand) {
-                return [
-                    'brand' => $brand->name,
-                    'products' => $brand->products->map(function ($product) {
-                        return [
-                            'name' => $product->name,
-                            'weight_g' => $product->weight_g,
-                            'sell_price_per_gram' => $product->latestSellPrice?->sell_price_per_gram,
-                            'buy_price_per_gram' => $product->latestBuyPrice?->buy_price_per_gram,
-                        ];
-                    })->toArray(),
-                ];
-            });
+        $brands = Brand::with('products')->orderBy('name')->get();
 
-        return response()->json($brands);
+        $results = $brands->map(function ($brand) {
+            return [
+                'brand' => $brand->name,
+                'products' => $brand->products->map(function ($product) {
+                    $sell = Price::where('product_id', $product->id)
+                        ->where('price_type', 'sell')
+                        ->orderByDesc('recorded_at')
+                        ->first();
+
+                    $buy = Price::where('product_id', $product->id)
+                        ->where('price_type', 'buy')
+                        ->orderByDesc('recorded_at')
+                        ->first();
+
+                    return [
+                        'name' => $product->name,
+                        'weight_g' => $product->weight_g,
+                        'sell_price_per_gram' => $sell?->price_per_gram,
+                        'buy_price_per_gram' => $buy?->price_per_gram,
+                    ];
+                })->toArray(),
+            ];
+        });
+
+        return response()->json($results);
     }
 
     /**
@@ -43,21 +56,31 @@ class GoldPriceController extends Controller
     public function getPricesByBrand($brandName)
     {
         $brand = Brand::where('name', $brandName)
-            ->with(['products.latestSellPrice', 'products.latestBuyPrice'])
+            ->with('products')
             ->firstOrFail();
 
         return response()->json([
             'brand' => $brand->name,
             'products' => $brand->products->map(function ($product) {
+                $sell = Price::where('product_id', $product->id)
+                    ->where('price_type', 'sell')
+                    ->orderByDesc('recorded_at')
+                    ->first();
+
+                $buy = Price::where('product_id', $product->id)
+                    ->where('price_type', 'buy')
+                    ->orderByDesc('recorded_at')
+                    ->first();
+
                 return [
                     'id' => $product->id,
                     'name' => $product->name,
                     'weight_g' => $product->weight_g,
                     'purity_pct' => $product->purity_pct,
-                    'sell_price_per_gram' => $product->latestSellPrice?->sell_price_per_gram,
-                    'buy_price_per_gram' => $product->latestBuyPrice?->buy_price_per_gram,
-                    'sell_price_total' => $product->weight_g * ($product->latestSellPrice?->sell_price_per_gram ?? 0),
-                    'buy_price_total' => $product->weight_g * ($product->latestBuyPrice?->buy_price_per_gram ?? 0),
+                    'sell_price_per_gram' => $sell?->price_per_gram,
+                    'buy_price_per_gram' => $buy?->price_per_gram,
+                    'sell_price_total' => $product->weight_g * ($sell?->price_per_gram ?? 0),
+                    'buy_price_total' => $product->weight_g * ($buy?->price_per_gram ?? 0),
                 ];
             })->toArray(),
         ]);
@@ -72,24 +95,34 @@ class GoldPriceController extends Controller
         $weight = $request->query('weight', 1);
 
         $products = Product::where('weight_g', $weight)
-            ->with('brand', 'latestSellPrice', 'latestBuyPrice')
-            ->orderBy('latestSellPrice.sell_price_per_gram')
+            ->with('brand')
+            ->orderBy('id')
             ->get()
             ->map(function ($product) {
+                $sell = Price::where('product_id', $product->id)
+                    ->where('price_type', 'sell')
+                    ->orderByDesc('recorded_at')
+                    ->first();
+
+                $buy = Price::where('product_id', $product->id)
+                    ->where('price_type', 'buy')
+                    ->orderByDesc('recorded_at')
+                    ->first();
+
                 return [
                     'brand' => $product->brand->name,
                     'weight_g' => $product->weight_g,
-                    'sell_price_per_gram' => $product->latestSellPrice?->sell_price_per_gram,
-                    'buy_price_per_gram' => $product->latestBuyPrice?->buy_price_per_gram,
-                    'spread' => ($product->latestSellPrice?->sell_price_per_gram ?? 0) - ($product->latestBuyPrice?->buy_price_per_gram ?? 0),
+                    'sell_price_per_gram' => $sell?->price_per_gram,
+                    'buy_price_per_gram' => $buy?->price_per_gram,
+                    'spread' => ($sell?->price_per_gram ?? 0) - ($buy?->price_per_gram ?? 0),
                 ];
             });
 
         return response()->json([
             'weight_g' => $weight,
             'brands' => $products->toArray(),
-            'cheapest' => $products->first(),
-            'most_expensive' => $products->last(),
+            'cheapest' => $products->sortBy('sell_price_per_gram')->first(),
+            'most_expensive' => $products->sortByDesc('sell_price_per_gram')->first(),
         ]);
     }
 
@@ -107,21 +140,26 @@ class GoldPriceController extends Controller
             $query->where('name', $brandName);
         })
             ->where('weight_g', $weight)
-            ->with('brand', 'latestSellPrice')
+            ->with('brand')
             ->firstOrFail();
 
-        $pricePerItem = $product->weight_g * ($product->latestSellPrice?->sell_price_per_gram ?? 0);
+        $sell = Price::where('product_id', $product->id)
+            ->where('price_type', 'sell')
+            ->orderByDesc('recorded_at')
+            ->first();
+
+        $pricePerItem = $product->weight_g * ($sell?->price_per_gram ?? 0);
         $totalPrice = $pricePerItem * $quantity;
 
         return response()->json([
             'brand' => $product->brand->name,
             'product' => $product->name,
             'weight_g' => $product->weight_g,
-            'price_per_gram' => $product->latestSellPrice?->sell_price_per_gram,
+            'price_per_gram' => $sell?->price_per_gram,
             'price_per_item' => $pricePerItem,
             'quantity' => $quantity,
             'total_price' => $totalPrice,
-            'recorded_at' => $product->latestSellPrice?->recorded_at,
+            'recorded_at' => $sell?->recorded_at,
         ]);
     }
 
@@ -131,13 +169,18 @@ class GoldPriceController extends Controller
      */
     public function getStats()
     {
-        $brands = Brand::with('products.latestSellPrice')->get();
+        $brands = Brand::with('products')->get();
 
         $stats = $brands->map(function ($brand) {
-            $prices = $brand->products
-                ->pluck('latestSellPrice.sell_price_per_gram')
-                ->filter()
-                ->toArray();
+            $prices = $brand->products->map(function ($product) {
+                return Price::where('product_id', $product->id)
+                    ->where('price_type', 'sell')
+                    ->orderByDesc('recorded_at')
+                    ->first();
+            })
+            ->filter()
+            ->pluck('price_per_gram')
+            ->toArray();
 
             return [
                 'brand' => $brand->name,
@@ -150,6 +193,64 @@ class GoldPriceController extends Controller
 
         return response()->json($stats);
     }
+
+    /**
+     * Get today's 1g prices per brand (Asia/Jakarta)
+     * GET /api/gold/today
+     */
+    public function today(): JsonResponse
+    {
+        $now = Carbon::now('Asia/Jakarta');
+        $start = $now->copy()->startOfDay();
+        $end = $now->copy()->endOfDay();
+
+        $brands = Brand::orderBy('name')->get();
+        $out = [];
+
+        foreach ($brands as $brand) {
+            $product = Product::where('brand_id', $brand->id)->where('weight_g', 1.0)->first();
+            if (!$product) {
+                continue;
+            }
+
+            $sell = Price::where('product_id', $product->id)
+                ->where('price_type', 'sell')
+                ->whereBetween('recorded_at', [$start, $end])
+                ->orderByDesc('recorded_at')
+                ->first();
+
+            $buy = Price::where('product_id', $product->id)
+                ->where('price_type', 'buy')
+                ->whereBetween('recorded_at', [$start, $end])
+                ->orderByDesc('recorded_at')
+                ->first();
+
+            if ($sell || $buy) {
+                $out[] = [
+                    'brand' => $brand->name,
+                    'product' => [
+                        'id' => $product->id,
+                        'name' => $product->name,
+                        'weight_g' => $product->weight_g,
+                    ],
+                    'sell' => $sell ? [
+                        'price_per_gram' => (float) $sell->price_per_gram,
+                        'recorded_at' => $sell->recorded_at->timezone('Asia/Jakarta')->toDateTimeString(),
+                    ] : null,
+                    'buy' => $buy ? [
+                        'price_per_gram' => (float) $buy->price_per_gram,
+                        'recorded_at' => $buy->recorded_at->timezone('Asia/Jakarta')->toDateTimeString(),
+                    ] : null,
+                ];
+            }
+        }
+
+        return response()->json([
+            'date' => $now->toDateString(),
+            'timezone' => 'Asia/Jakarta',
+            'data' => $out,
+        ]);
+    }
 }
 
 /**
@@ -161,5 +262,6 @@ class GoldPriceController extends Controller
  *     Route::get('/compare', [GoldPriceController::class, 'comparePrice']);
  *     Route::get('/calculate', [GoldPriceController::class, 'calculatePrice']);
  *     Route::get('/stats', [GoldPriceController::class, 'getStats']);
+ *     Route::get('/today', [GoldPriceController::class, 'today']);
  * });
  */
